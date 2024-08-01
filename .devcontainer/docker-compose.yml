@@ -1,0 +1,30 @@
+version: '3'
+
+services:
+  master:
+    image: husarion/rosbridge-server:noetic
+    command: roslaunch rosbridge_server rosbridge_websocket.launch
+    ports:
+      - 11311:11311
+      - 9090:9090
+    restart: unless-stopped
+  
+  rtsp:
+    image: bleyn/ros-rtsp:latest
+    environment:
+      - ROS_MASTER_URI=http://master:11311
+    depends_on:
+      - master
+    network_mode: service:master
+    restart: unless-stopped
+  
+  segmentation:
+    build: .
+    volumes:
+      - ..:/workspace:cached
+    environment:
+      - ROS_MASTER_URI=http://master:11311
+    command: sleep infinity
+    depends_on:
+      - master
+    network_mode: service:master

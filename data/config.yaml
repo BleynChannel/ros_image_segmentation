@@ -1,0 +1,29 @@
+log:
+  active: false
+  level: INFO 
+  path: logs
+model:
+  type: paddleseg
+  path: data/models/paddleseg_384x192
+  device: gpu
+predict_mode: single
+benchmark: false
+ros:
+  node_name: test_node
+  cameras:
+    - name: Left
+      raw_topic: /camera_101/image_raw
+      segmented_image_topic: /camera_101/segmented_image
+      overlayed_image_topic: /camera_101/overlayed_image
+    - name: Front
+      raw_topic: /camera_102/image_raw
+      segmented_image_topic: /camera_102/segmented_image
+      overlayed_image_topic: /camera_102/overlayed_image
+    - name: Right
+      raw_topic: /camera_103/image_raw
+      segmented_image_topic: /camera_103/segmented_image
+      overlayed_image_topic: /camera_103/overlayed_image
+    - name: Back
+      raw_topic: /camera_104/image_raw
+      segmented_image_topic: /camera_104/segmented_image
+      overlayed_image_topic: /camera_104/overlayed_image

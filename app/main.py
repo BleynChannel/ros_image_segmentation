@@ -1,62 +1,44 @@
+import logging
 import argparse
-import numpy as np
 import signal
-import sys
 
-import rospy
-from sensor_msgs.msg import Image
+from src.config import AppConfig
+from src.predictor import Predictor
+from src.ros_pool import RosPool
 
-np.float = np.float32
-import ros_numpy
-
-from src.model import Model
-from src.camera import Camera
-
-is_stopping = False
+is_stopped = False
 
 def main(args):
-	model = Model(model_path=args.model)
+    config = AppConfig(config_path=args.config_path)
 
-	rospy.init_node('test')
+    # Configure logging
+    if config.log:
+        logging.basicConfig(level=config.log_level, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', filename=config.log_path)
 
-	def get_image(msg: Image):
-		# image shape (height, width, channels)
-		image = ros_numpy.numpify(msg)
-		return model(image, args.c)
+    # Start ROS pool
+    predictor = Predictor(config)
+    ros_pool = RosPool(config, predictor)
 
-	cameras = []
-	for camera_idx in range(1, args.count_cameras + 1):
-		topic_name = f'/camera_10{camera_idx}'
+    # Handle SIGINT and SIGTERM
+    def stop_signal_handler(signal_number, stack_frame):
+        global is_stopped
 
-		camera = Camera(topic_name, get_image)
-		camera.start()
-		cameras.append(camera)
+        if not is_stopped:
+            is_stopped = True
+            logging.info('Stopping...')
+            ros_pool.stop()
+        else:
+            logging.info('Exiting...')
+            exit(0)
 
-	def signal_handler(sig, frame):
-		global is_stopping
+    signal.signal(signal.SIGINT, stop_signal_handler)
+    signal.signal(signal.SIGTERM, stop_signal_handler)
 
-		if not is_stopping:
-			is_stopping = True
-			rospy.loginfo('Stopping inference...')
+    ros_pool.run()
 
-			for camera in cameras:
-				camera.stop()
-				camera.join()
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--config_path', type=str, default='config.yaml', help='Path to the config file')
+    args = parser.parse_args()
 
-		rospy.loginfo('Exiting...')
-		sys.exit(0)
-
-	signal.signal(signal.SIGINT, signal_handler)
-	rospy.loginfo('Inference started')
-	signal.pause()
-
-if __name__ == "__main__":
-	parser = argparse.ArgumentParser()
-	parser.add_argument('model', type=str)
-	# parser.add_argument('config', type=str)
-	parser.add_argument('--count_cameras', type=int, default=1)
-	parser.add_argument('-c', action='store_true')
-	# parser.add_argument('')
-	
-	args = parser.parse_args()
-	main(args)
+    main(args)

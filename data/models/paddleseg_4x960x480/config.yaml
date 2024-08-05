@@ -1,0 +1,9 @@
+model_filename: model.pdmodel
+params_filename: model.pdiparams
+color_scheme: cityscapes
+precision: int8
+cpu:
+  threads: 10
+  use_mkldnn: true
+gpu:
+  use_trt: true

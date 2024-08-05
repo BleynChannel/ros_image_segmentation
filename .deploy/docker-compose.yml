@@ -1,0 +1,26 @@
+version: '3'
+
+services:
+  master:
+    image: husarion/foxglove-bridge:noetic-nightly
+    command: roslaunch foxglove_bridge foxglove_bridge.launch port:=9090
+    ports:
+      - 11311:11311
+      - 9090:9090
+    restart: unless-stopped
+  
+  segmentation:
+    image: bleyn/2d_segmentation:latest
+    volumes:
+      - ./data/data:/app/data
+      - segmentation:/app/logs
+    environment:
+      - ROS_MASTER_URI=http://master:11311
+    command: python main.py --config=data/config.yaml
+    depends_on:
+      - master
+    runtime: nvidia
+
+volumes:
+  segmentation:
+    driver: local

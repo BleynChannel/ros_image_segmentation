@@ -1,7 +1,0 @@
-preproccess:
-  width: 512
-  height: 512
-  channels: 3
-
-postprocess:
-  

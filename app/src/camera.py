@@ -2,28 +2,38 @@ from threading import Thread
 from sensor_msgs.msg import Image
 import rospy
 import ros_numpy
+import logging
+
+from .config import CameraConfig
 
 class Camera(Thread):
-	def __init__(self, topic_name, callback):
-		Thread.__init__(self)
+    def log_info(self, msg):
+        rospy.loginfo(msg)
+        logging.info(msg)
 
-		self.topic_name = topic_name
-		self.raw_topic_name = f'{topic_name}/image_raw'
-		self.callback = callback
+    def __init__(self, config: CameraConfig, callback):
+        Thread.__init__(self)
 
-		self.segmented_publisher = rospy.Publisher(f'{topic_name}/segmented_image', Image, queue_size=1)
-		self.overlayed_publisher = rospy.Publisher(f'{topic_name}/overlayed_image', Image, queue_size=1)
+        self.config = config
+        self.callback = callback
+        # self.rate = rospy.Rate(10)
 
-		self.running = False
+        self.segmented_publisher = rospy.Publisher(self.config.segmented_image_topic, Image, queue_size=1)
+        self.overlayed_publisher = rospy.Publisher(self.config.overlayed_image_topic, Image, queue_size=1)
 
-	def run(self):
-		self.running = True
-		while self.running and not rospy.is_shutdown():
-			msg = rospy.wait_for_message(self.raw_topic_name, Image)
-			segmented_image, overlayed_image = self.callback(msg)
+        self.running = False
 
-			self.segmented_publisher.publish(ros_numpy.image.numpy_to_image(segmented_image, msg.encoding))
-			self.overlayed_publisher.publish(ros_numpy.image.numpy_to_image(overlayed_image, msg.encoding))
+    def run(self):
+        self.running = True
+        self.log_info(f"Camera '{self.config.name}' started")
+        while self.running and not rospy.is_shutdown():
+            msg = rospy.wait_for_message(self.config.raw_topic, Image)
+            self.callback(self, msg)
+            # self.rate.sleep()
 
-	def stop(self):
-		self.running = False
+    def publish(self, segmented_image, overlayed_image, encoding = 'bgr8'):
+        self.segmented_publisher.publish(ros_numpy.image.numpy_to_image(segmented_image, encoding))
+        self.overlayed_publisher.publish(ros_numpy.image.numpy_to_image(overlayed_image, encoding))
+
+    def stop(self):
+        self.running = False

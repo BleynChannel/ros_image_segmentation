@@ -2,33 +2,25 @@ version: '3'
 
 services:
   master:
-    image: husarion/rosbridge-server:noetic
-    command: roslaunch rosbridge_server rosbridge_websocket.launch
+    image: husarion/foxglove-bridge:noetic-nightly
+    command: roslaunch foxglove_bridge foxglove_bridge.launch port:=9090
     ports:
       - 11311:11311
       - 9090:9090
     restart: unless-stopped
-    # network_mode: host
-  
-  rtsp:
-    image: bleyn/ros-rtsp:latest
-    environment:
-      - ROS_MASTER_URI=http://master:11311
-    depends_on:
-      - master
-    network_mode: service:master
-    restart: unless-stopped
   
   segmentation:
-    # build: .
-    image: bleyn/2d_segmentation:cpu
+    build: .
+    volumes:
+      - ./data:/app/data
+      - segmentation:/app/logs
     environment:
       - ROS_MASTER_URI=http://master:11311
-    command: python main.py /checkpoints/mobilevit_deeplabv3.onnx -c --count_cameras 4
-    volumes:
-      - ./checkpoints:/checkpoints
-      # - ./configs:/app/configs
+    command: python main.py --config=data/config.yaml
     depends_on:
       - master
-    network_mode: service:master
-    restart: unless-stopped
+    runtime: nvidia
+
+volumes:
+  segmentation:
+    driver: local
